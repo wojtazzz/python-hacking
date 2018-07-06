@@ -1,3 +1,0 @@
-import paramiko
-
-print 'Hello'
