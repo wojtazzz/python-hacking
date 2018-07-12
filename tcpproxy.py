@@ -35,9 +35,82 @@ def server_loop(localhost, localport, remotehost, remoteport, receivefirst):
 
         proxy_thread.start()
 
-def proxy_handler(client_socket, remotehost, remoteport, receivefirst):
+
+def receive_from(socket):
+    buffer = ""
+
+    socket.settimeout(21)
+
+    try:
+        while True:
+            data = socket.recv(4096)
+
+            if not data:
+                break
+            buffer+=data
+    except:
+        print "Failed to receive data"
+
+    return buffer
+
+def hexdump(remote_buffer):
     pass
 
+
+def response_modifier(buffer):
+    return buffer
+
+def request_modifier(buffer):
+    return buffer
+
+def proxy_handler(client_socket, remotehost, remoteport, receivefirst):
+
+    remote_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    remote_socket.connect((remotehost, remoteport))
+
+    if receivefirst:
+        remote_buffer = receive_from(remote_socket)
+        hexdump(remote_buffer)
+
+        # Optionally modify data in transit
+        # remote_buffer = response_modyfier(remote_buffer)
+
+        if len(remote_buffer):
+            print "[<==] Sending %s bytes to localhost." % len(remote_buffer)
+            client_socket.send(remote_buffer)
+
+    while True:
+
+        local_buffer = receive_from(client_socket)
+
+        if len(local_buffer):
+            print "Received %d bytes from localhost." % len(local_buffer)
+            hexdump(local_buffer)
+
+            # local_buffer = request_modifier(local_buffer)
+            remote_socket.send(local_buffer)
+            print "[==>] Sent data to remote host"
+
+            remote_buffer = receive_from(remote_socket)
+
+            if len(remote_buffer):
+
+                print "[<==] Received %d bytes from remote host." % len(remote_buffer)
+
+                hexdump(remote_buffer)
+
+                # remote_buffer = response_modifier(remote_buffer)
+
+                client_socket.send(remote_buffer)
+
+                print "[<==] Send to localhost."
+
+            if not len(local_buffer) or not len(remote_buffer):
+                client_socket.close()
+                remote_socket.close()
+                print "[*] No more data. Closed all connections."
+
+                break
 
 
 def main():
@@ -53,4 +126,3 @@ def main():
     receivefirst = str(sys.argv[5])
 
     server_loop(localhost, localport, remotehost, remoteport, receivefirst)
-   
