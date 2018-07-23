@@ -12,7 +12,6 @@ def usage():
 
 
 def server_loop(localhost, localport, remotehost, remoteport, receivefirst):
-
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     try:
@@ -31,7 +30,8 @@ def server_loop(localhost, localport, remotehost, remoteport, receivefirst):
 
         print "[*] Received incomming connection from: %s:%d" % (address[0], address[1])
 
-        proxy_thread = threading.Thread(target=proxy_handler, args=(client_socket, remotehost, remoteport, receivefirst))
+        proxy_thread = threading.Thread(target=proxy_handler,
+                                        args=(client_socket, remotehost, remoteport, receivefirst))
 
         proxy_thread.start()
 
@@ -39,7 +39,7 @@ def server_loop(localhost, localport, remotehost, remoteport, receivefirst):
 def receive_from(socket):
     buffer = ""
 
-    socket.settimeout(21)
+    socket.settimeout(2)
 
     try:
         while True:
@@ -47,24 +47,33 @@ def receive_from(socket):
 
             if not data:
                 break
-            buffer+=data
+            buffer += data
     except:
-        print "Failed to receive data"
+        print "[!!] Failed to receive data"
 
     return buffer
 
-def hexdump(remote_buffer):
-    pass
+
+def hexdump(src, length=8):
+    result = []
+    digits = 4 if isinstance(src, unicode) else 2
+    for i in xrange(0, len(src), length):
+        s = src[i:i + length]
+        hexa = b' '.join(["%0*X" % (digits, ord(x)) for x in s])
+        text = b''.join([x if 0x20 <= ord(x) < 0x7F else b'.' for x in s])
+        result.append(b"%04X   %-*s   %s" % (i, length * (digits + 1), hexa, text))
+    print b'\n'.join(result)
 
 
 def response_modifier(buffer):
     return buffer
 
+
 def request_modifier(buffer):
     return buffer
 
-def proxy_handler(client_socket, remotehost, remoteport, receivefirst):
 
+def proxy_handler(client_socket, remotehost, remoteport, receivefirst):
     remote_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     remote_socket.connect((remotehost, remoteport))
 
@@ -84,18 +93,17 @@ def proxy_handler(client_socket, remotehost, remoteport, receivefirst):
         local_buffer = receive_from(client_socket)
 
         if len(local_buffer):
-            print "Received %d bytes from localhost." % len(local_buffer)
+            print "[==>X] Received %d bytes from localhost." % len(local_buffer)
             hexdump(local_buffer)
 
             # local_buffer = request_modifier(local_buffer)
             remote_socket.send(local_buffer)
-            print "[==>] Sent data to remote host"
+            print "[X==>] Sent data to remote host"
 
             remote_buffer = receive_from(remote_socket)
 
             if len(remote_buffer):
-
-                print "[<==] Received %d bytes from remote host." % len(remote_buffer)
+                print "[X<==] Received %d bytes from remote host." % len(remote_buffer)
 
                 hexdump(remote_buffer)
 
@@ -103,7 +111,7 @@ def proxy_handler(client_socket, remotehost, remoteport, receivefirst):
 
                 client_socket.send(remote_buffer)
 
-                print "[<==] Send to localhost."
+                print "[<==X] Sent %d bytes to localhost." % len(remote_buffer)
 
             if not len(local_buffer) or not len(remote_buffer):
                 client_socket.close()
@@ -126,3 +134,6 @@ def main():
     receivefirst = str(sys.argv[5])
 
     server_loop(localhost, localport, remotehost, remoteport, receivefirst)
+
+
+main()
