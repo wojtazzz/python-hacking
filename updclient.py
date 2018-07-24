@@ -13,4 +13,4 @@ client.sendto("AASFAFDFD", (host, port))
 data = client.recvfrom(4097)
 
 print data
-print "--------------------------------------"
+print "-----XXX---------------------------------"
